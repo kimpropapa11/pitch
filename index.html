@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>피칭 분석기</title>
+<meta name="theme-color" content="#1c7ed6">
+<meta name="robots" content="noindex">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="피칭분석">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--line:#dfe3ea;--ink:#212529;--muted:#6c757d;--accent:#1c7ed6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Malgun Gothic","맑은 고딕",system-ui,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:14px}
+.muted{color:var(--muted);font-size:13px}
+.errmsg{color:#b02525;font-weight:bold;font-size:14px;background:#fff0f0;border:1px solid #ffc9c9;border-radius:6px;padding:8px 10px;margin-top:6px}
+button,select,input[type=text],input[type=number]{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+button{cursor:pointer}button:hover{background:#f1f3f5}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:bold;padding:9px 18px}
+button.primary:disabled{opacity:.5}
+#drop{border:2px dashed #adb5bd;border-radius:10px;padding:26px;text-align:center}
+#drop.over{border-color:var(--accent);background:#e7f5ff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.vwrap{position:relative;background:#000;border-radius:8px;overflow:hidden}
+.vwrap video{display:block;width:100%;max-height:520px}
+.vwrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;object-fit:contain}
+.form{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+#barwrap{height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;margin-top:8px}
+#bar{height:100%;width:0;background:var(--accent)}
+#view3d{width:100%;background:#fafbfc;border:1px solid var(--line);border-radius:8px;touch-action:none;cursor:grab}
+#scrub{width:100%}
+#live{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+#live div{background:#f8f9fa;border-radius:6px;padding:4px 8px;font-size:13px}
+#live span{color:var(--muted);display:block;font-size:12px}
+.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:860px){.chartgrid{grid-template-columns:1fr}#live{grid-template-columns:repeat(2,1fr)}}
+.chartgrid canvas{width:100%;border:1px solid var(--line);border-radius:8px}
+/* 보고서 */
+#report{background:#fff;color:#212529}
+#report h1{font-size:24px}
+#report h2{font-size:18px;border-bottom:2px solid #212529;padding-bottom:4px;margin:28px 0 10px}
+#report h3{font-size:15px;margin:16px 0 6px}
+#report h4{font-size:15px;margin:0 0 4px}
+#report table{width:100%;border-collapse:collapse;font-size:14px}
+#report th,#report td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+#report th{background:#f8f9fa;font-size:13px}
+#report td.num{text-align:right;white-space:nowrap}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:bold;white-space:nowrap}
+.tag.ok{background:#d3f9d8;color:#1b6e2d}.tag.near{background:#fff3bf;color:#8a5a00}.tag.off{background:#ffe3e3;color:#b02525}.tag.na{background:#e9ecef;color:#495057}
+.summary{display:grid;grid-template-columns:150px 1fr;gap:18px}
+.score{text-align:center;border:2px solid #212529;border-radius:10px;padding:14px 6px;align-self:start}
+.score b{font-size:46px;line-height:1;display:block}.score span{font-size:12px;color:var(--muted)}
+.warn{background:#fff9db;border:1px solid #ffe066;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:14px}
+.warn ul{margin:4px 0 0;padding-left:20px}
+.snaps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.snaps figure{margin:0;font-size:13px;text-align:center}.snaps img{width:100%;border-radius:6px;display:block}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.charts img{width:100%;border:1px solid var(--line);border-radius:6px}
+.item{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin:12px 0;break-inside:avoid}
+.item p{margin:4px 0}
+.refs{font-size:13px;color:#495057}
+sup{color:var(--accent);font-size:11px}
+#report{word-break:keep-all;overflow-wrap:anywhere}
+@media(max-width:700px){
+  main{padding:12px 8px 40px}.card{padding:12px}
+  #report table{font-size:12.5px}#report th,#report td{padding:5px 3px}
+  #report td:first-child,#report th:first-child{min-width:7.5em}
+  #report td.num{white-space:normal}
+  #report th:last-child:nth-child(5),#report td:last-child:nth-child(5){display:none}
+  .summary{grid-template-columns:1fr}.snaps{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+@media print{
+  body{background:#fff}.noprint{display:none!important}main{max-width:none;padding:0}
+  .card{border:0;padding:0;margin:0}#report h2{break-after:avoid}table,figure,.summary{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="noprint">
+    <h1>피칭 분석기</h1>
+    <div class="muted">영상 한 개로 투구 동작을 3D로 복원하고, 바이오메카닉스 연구 기준으로 보고서를 만듭니다. 영상은 이 PC 밖으로 전송되지 않습니다.</div>
+
+    <div class="card">
+      <div id="drop">
+        <b>① 투구 영상을 여기에 끌어다 놓거나</b>
+        <label><input type="file" id="file" accept="video/*" hidden><button type="button" onclick="document.getElementById('file').click()">파일 선택</button></label>
+        <div class="muted" id="fileName">mp4 · mov 등</div>
+      </div>
+      <details style="margin-top:10px"><summary><b>촬영 가이드 (정확도를 크게 좌우합니다)</b></summary>
+        <ul>
+          <li><b>카메라 고정</b>(삼각대), 수평 유지. 투수 <b>전신</b>이 와인드업부터 팔로스루까지 화면 안에 있어야 합니다.</li>
+          <li>각도는 자유지만 <b>던지는 팔 쪽 측면~45° 앞쪽</b>(우투수면 3루 쪽)이 팔이 가려지지 않아 가장 좋습니다.</li>
+          <li><b>슬로모션 120~240fps</b> 권장. 30fps는 착지~릴리스가 4~5프레임뿐이라 자세 지표만 참고할 수 있습니다.</li>
+          <li>화면에 투수 <b>한 명만</b> 크게. 밝은 곳에서, 몸에 붙는 옷일수록 좋습니다.</li>
+        </ul>
+      </details>
+    </div>
+
+    <div class="card" id="work" hidden>
+      <div class="grid2">
+        <div>
+          <div class="vwrap"><video id="video" controls muted playsinline></video><canvas id="overlay"></canvas></div>
+          <div class="row"><button id="setStart">현재 위치를 시작으로</button><button id="setEnd">현재 위치를 끝으로</button>
+            <label><input type="checkbox" id="showSkel" checked> 골격 표시</label></div>
+          <div class="muted" id="rangeInfo"></div>
+        </div>
+        <div>
+          <b>② 설정</b>
+          <div class="form" style="margin-top:8px">
+            <label for="pname">선수 이름</label><input type="text" id="pname" placeholder="선택">
+            <label for="memo">메모</label><input type="text" id="memo" placeholder="예: 직구, 불펜 3번째">
+            <label for="hand">투구 손</label><select id="hand"><option value="auto">자동 판별</option><option value="R">우투</option><option value="L">좌투</option></select>
+            <label for="fps">영상 재생 fps</label><select id="fps"><option>24</option><option selected>30</option><option>60</option><option>120</option><option>240</option></select>
+            <label for="slow">슬로모션 배율</label><select id="slow"><option value="1">1배 (일반 영상)</option><option value="2">2배 느림</option><option value="4">4배 느림 (120fps→30fps)</option><option value="8">8배 느림 (240fps→30fps)</option></select>
+            <label for="model">정밀도</label><select id="model"><option value="heavy">정밀 (느림)</option><option value="full">표준</option><option value="lite">빠름</option></select>
+          </div>
+          <p class="muted">슬로모션으로 찍은 영상은 파일 자체가 느리게 재생되므로 배율을 맞춰야 시간·속도 값이 정확합니다. 영상에서 <b>투구 1개</b>만 남도록 시작·끝을 지정하세요.</p>
+          <div class="row"><button class="primary" id="run">③ 분석 시작</button><button id="cancel" hidden>취소</button></div>
+          <div id="barwrap"><div id="bar"></div></div>
+          <div class="muted" id="status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="results" hidden>
+    <div class="card noprint">
+      <div class="grid2">
+        <div>
+          <b>3D 복원</b> <span class="muted">드래그해서 회전 · 빨강 = 투구 팔, 파랑 = 앞다리</span>
+          <canvas id="view3d" width="560" height="460"></canvas>
+          <div class="row"><button id="vSide">측면</button><button id="vFront">정면(포수 시점)</button><button id="vBack">뒤</button><button id="vTop">위</button></div>
+        </div>
+        <div>
+          <b>프레임 탐색</b>
+          <input type="range" id="scrub" min="0" max="1" value="0">
+          <div class="row"><button id="prev">◀</button><button id="play">▶ 재생</button><button id="next">▶</button>
+            <button id="go_pkh">무릎 최고</button><button id="go_fc">착지</button><button id="go_mer">최대 외회전</button><button id="go_br">릴리스</button></div>
+          <div class="muted" id="frameInfo"></div>
+          <div id="live"></div>
+          <p class="muted" style="margin-bottom:4px">자동으로 잡힌 착지·릴리스 프레임이 영상과 다르면, 맞는 프레임으로 이동한 뒤 지정하세요. 보고서가 다시 계산됩니다.</p>
+          <div class="row"><button id="setFC">현재 프레임을 착지로</button><button id="setBR">현재 프레임을 릴리스로</button><button id="resetEv">자동으로 되돌리기</button></div>
+        </div>
+      </div>
+      <div class="chartgrid" style="margin-top:14px">
+        <canvas id="ch1" width="560" height="250"></canvas><canvas id="ch2" width="560" height="250"></canvas>
+        <canvas id="ch3" width="560" height="250"></canvas><canvas id="ch4" width="560" height="250"></canvas>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="primary" id="print">보고서 인쇄 / PDF 저장</button><button id="saveHist">기록 저장 (다음 분석과 비교)</button><button id="exportJson">원자료 JSON 내보내기</button></div>
+    </div>
+    <div class="card" id="report"></div>
+  </div>
+</main>
+<script src="js/biomech.js"></script>
+<script src="js/refs.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
