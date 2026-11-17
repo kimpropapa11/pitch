@@ -83,7 +83,16 @@ sup{color:var(--accent);font-size:11px}
 </style>
 </head>
 <body>
-<main>
+<div id="gate" hidden style="max-width:320px;margin:18vh auto 0;padding:0 16px;text-align:center">
+  <h1>피칭 분석기</h1>
+  <p class="muted">비밀번호를 입력하세요.</p>
+  <form id="gateForm" class="row" style="justify-content:center">
+    <input type="password" id="gatePw" inputmode="numeric" autocomplete="off" aria-label="비밀번호" style="width:150px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;text-align:center">
+    <button class="primary" type="submit">확인</button>
+  </form>
+  <div id="gateMsg" style="margin-top:10px"></div>
+</div>
+<main id="appMain" hidden>
   <div class="noprint">
     <h1>피칭 분석기</h1>
     <div class="muted">영상 한 개로 투구 동작을 3D로 복원하고, 바이오메카닉스 연구 기준으로 보고서를 만듭니다. 영상은 이 PC 밖으로 전송되지 않습니다.</div>
@@ -159,6 +168,26 @@ sup{color:var(--accent);font-size:11px}
     <div class="card" id="report"></div>
   </div>
 </main>
+<script>
+/* 비밀번호 잠금: 이 PC(localhost)에서는 생략. 한 번 통과하면 그 기기에서는 다시 묻지 않음 */
+(function () {
+  const HASH = 'eec05fb390ba3915ae29966196cc565479cc782ff39f5d9f2577ebec9081f531', KEY = 'pitchUnlock';
+  const gate = document.getElementById('gate'), main = document.getElementById('appMain');
+  const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !/[?&]gate=1/.test(location.search);
+  const open = () => { gate.hidden = true; main.hidden = false; };
+  let saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
+  if (local || saved === HASH) return open();
+  gate.hidden = false;
+  document.getElementById('gateForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pw = document.getElementById('gatePw'), msg = document.getElementById('gateMsg');
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('pitch-analyzer:' + pw.value));
+    const hex = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+    if (hex === HASH) { try { localStorage.setItem(KEY, HASH); } catch (e) {} open(); }
+    else { msg.className = 'errmsg'; msg.textContent = '비밀번호가 맞지 않습니다.'; pw.value = ''; pw.focus(); }
+  });
+})();
+</script>
 <script src="js/biomech.js"></script>
 <script src="js/refs.js"></script>
 <script src="js/app.js"></script>
