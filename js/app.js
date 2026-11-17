@@ -445,7 +445,15 @@ ${cmp}
     S.lastEval = E;
   }
 
-  $('print').onclick = () => window.print();
+  /* 저장 파일명: 분석 날짜_시각_피칭분석(_선수이름). PDF 저장 시 브라우저가 문서 제목을 파일명으로 사용 */
+  function saveName() {
+    const d = new Date(S.meta.date || Date.now()), p = n => String(n).padStart(2, '0');
+    const name = (S.meta.name || '').replace(/[\\/:*?"<>|]/g, '').trim();
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}_피칭분석` + (name ? '_' + name : '');
+  }
+  const APP_TITLE = document.title;
+  window.addEventListener('afterprint', () => { document.title = APP_TITLE; });
+  $('print').onclick = () => { if (S.res) document.title = saveName(); window.print(); };
   $('saveHist').onclick = () => {
     if (!S.res) return;
     const h = history();
@@ -458,7 +466,7 @@ ${cmp}
     const R = S.res, data = { meta: S.meta, hand: R.hand, events: R.events, metrics: R.metrics, quality: R.quality, t: R.t, series: R.series, points3d: R.pts };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    a.download = (S.meta.name || 'pitch') + '_' + S.meta.date.slice(0, 10) + '.json';
+    a.download = saveName() + '.json';
     a.click();
   };
 
